@@ -2,6 +2,7 @@ package de.mathisburger;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 
 public class MaterialTyp {
 
@@ -13,16 +14,14 @@ public class MaterialTyp {
 
     private long kritischerBestand;
 
-    private long anzahl;
-
     private State state;
 
     /**
-     * This is not used in the current state maschine implementation.
+     * This is not used in the current state machine implementation.
      */
-    private Collection<MaterialExemplar> exemplare;
+    private final Collection<MaterialExemplar> exemplare;
 
-    public MaterialTyp(long materialNr, String beschreibung, long minimalLagernd, long anzahl, long kritischerBestand) {
+    public MaterialTyp(long materialNr, String beschreibung, long minimalLagernd, long kritischerBestand) {
 
         if (kritischerBestand >= minimalLagernd) {
             throw new RuntimeException("Der kritische Bestand muss kleiner sein, als der minimal lagernde bestand");
@@ -32,17 +31,12 @@ public class MaterialTyp {
         this.beschreibung = beschreibung;
         this.minimalLagernd = minimalLagernd;
         this.kritischerBestand = kritischerBestand;
-        this.anzahl = anzahl;
         this.exemplare = new ArrayList<MaterialExemplar>();
         this.state = State.Locked;
     }
 
     public long getAnzahl() {
-        return anzahl;
-    }
-
-    public void setAnzahl(long anzahl) {
-        this.anzahl = anzahl;
+        return this.exemplare.size();
     }
 
     public String getBeschreibung() {
@@ -55,14 +49,6 @@ public class MaterialTyp {
 
     public Collection<MaterialExemplar> getExemplare() {
         return exemplare;
-    }
-
-    public void setExemplare(Collection<MaterialExemplar> exemplare) {
-        this.exemplare = exemplare;
-    }
-
-    public void addExemplar(MaterialExemplar exemplar) {
-        this.exemplare.add(exemplar);
     }
 
     public long getMaterialNr() {
@@ -81,58 +67,89 @@ public class MaterialTyp {
         return kritischerBestand;
     }
 
+    public void setKritischerBestand(long kritischerBestand) {
+        this.kritischerBestand = kritischerBestand;
+    }
+
     public State getState() {
         return state;
+    }
+
+    public String toString() {
+        return "Material: " + this.materialNr + "\nBeschreibung: " + this.beschreibung;
     }
 
     private void setState(State state) {
         this.state = state;
     }
 
-    public void setKritischerBestand(long kritischerBestand) {
-        this.kritischerBestand = kritischerBestand;
-    }
-
     // --------------- Functionality implementations here
 
-    public void lieferungEinlagern(long anzahl) {
-        if (anzahl <= 0) {
-            throw new RuntimeException("Negative numbers not allowed");
-        }
-        this.anzahl += anzahl;
-        if (this.anzahl > this.kritischerBestand) {
-            this.setState(State.Locked);
-        }
-        if (this.anzahl > this.minimalLagernd) {
-            this.setState(State.InStock);
-        }
+    public void lieferungEinlagern(Collection<MaterialExemplar> materialExemplare) {
+        this.exemplare.addAll(materialExemplare);
+        this.setStateAfterDelivery();
     }
 
-    public void entnahmeDurchfuehren(long anzahl) {
-        if (anzahl <= 0) {
-            throw new RuntimeException("Negative numbers not allowed");
+    public void entnahmeDurchfuehren(long entnahmeAbzahl) {
+        if (entnahmeAbzahl <= 0) {
+            throw new RuntimeException("Negative Zahlen sind nicht erlaubt");
         }
+        if (entnahmeAbzahl > this.getAnzahl()) {
+            throw new RuntimeException("So viel haben wir nicht im Bestand");
+        }
+
+        // Withdrawing items from stock is only allowed in "in stock" state
         if (this.state != State.InStock) {
             throw new RuntimeException("Es kann nichts aus dem Bestand entnommen werden");
         }
-        this.anzahl -= anzahl;
-        if (this.anzahl <= this.minimalLagernd && this.anzahl > this.kritischerBestand) {
-            this.state = State.MinimalStock;
+
+        // Removes material from the stock
+        Iterator<MaterialExemplar> iterator = this.exemplare.iterator();
+        for (int i=0; i<this.exemplare.size(); i++) {
+            this.exemplare.remove(iterator.next());
+        }
+
+        // Logic to check whether a state change is required
+        if (this.getAnzahl() <= this.minimalLagernd && this.getAnzahl() > this.kritischerBestand) {
+            this.setState(State.MinimalStock);
             this.placeRestockOrder();
         }
-        if (this.anzahl < this.kritischerBestand) {
+        if (this.getAnzahl() < this.kritischerBestand) {
             this.sendCriticalMail();
             this.placeRestockOrder();
-            this.state = State.Critial;
+            this.setState(State.Critial);
         }
 
     }
 
+    /**
+     * Sends the mail to notify someone about the critical stock
+     */
     private void sendCriticalMail() {
         System.out.println("Wir befinden uns im kritischen Bestand!!!!");
+        System.out.println(this);
     }
 
+    /**
+     * Prints the message that a restocking order has been placed.
+     */
     private void placeRestockOrder() {
         System.out.println("Es wurde Material nachbestellt");
+        System.out.println(this);
+    }
+
+    /**
+     * Sets the state of the machine after a delivery conditionally depending on the current state and the current stock.
+     */
+    private void setStateAfterDelivery() {
+        if (this.state == State.Critial && this.getAnzahl() > this.kritischerBestand) {
+            this.setState(State.Locked);
+        }
+        if (this.state == State.MinimalStock && this.getAnzahl() > this.minimalLagernd) {
+            this.setState(State.Locked);
+        }
+        if (this.state == State.Locked && this.getAnzahl() > this.minimalLagernd) {
+            this.setState(State.InStock);
+        }
     }
 }
