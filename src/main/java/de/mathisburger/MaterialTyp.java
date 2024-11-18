@@ -2,6 +2,7 @@ package de.mathisburger;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 
 public class MaterialTyp {
@@ -55,7 +56,7 @@ public class MaterialTyp {
         return materialNr;
     }
 
-    public long isMinimalLagernd() {
+    public long getMinimalLagernd() {
         return minimalLagernd;
     }
 
@@ -90,11 +91,11 @@ public class MaterialTyp {
         this.setStateAfterDelivery();
     }
 
-    public void entnahmeDurchfuehren(long entnahmeAbzahl) {
-        if (entnahmeAbzahl <= 0) {
-            throw new RuntimeException("Negative Zahlen sind nicht erlaubt");
+    public void entnahmeDurchfuehren(long entnahmeAnzahl) {
+        if (entnahmeAnzahl <= 0) {
+            throw new RuntimeException("Negative Zahlen oder 0 sind nicht erlaubt");
         }
-        if (entnahmeAbzahl > this.getAnzahl()) {
+        if (entnahmeAnzahl > this.getAnzahl()) {
             throw new RuntimeException("So viel haben wir nicht im Bestand");
         }
 
@@ -104,10 +105,14 @@ public class MaterialTyp {
         }
 
         // Removes material from the stock
+        // NOTE: We need to use the approach of storing everything into a collection here, because
+        //       of the internal comodification checker of java itself.
         Iterator<MaterialExemplar> iterator = this.exemplare.iterator();
-        for (int i=0; i<this.exemplare.size(); i++) {
-            this.exemplare.remove(iterator.next());
+        Collection<MaterialExemplar> toRemove = new ArrayList<MaterialExemplar>();
+        for (int i=0; i<entnahmeAnzahl; i++) {
+            toRemove.add(iterator.next());
         }
+        this.exemplare.removeAll(toRemove);
 
         // Logic to check whether a state change is required
         if (this.getAnzahl() <= this.minimalLagernd && this.getAnzahl() > this.kritischerBestand) {
