@@ -13,7 +13,7 @@ public class ConsoleUI {
         this.fileCopy = ConfigurationManager.getFileCopy();
     }
 
-    public void run() {
+    public static void main(String[] args) {
         fileCopy.copyFile(new File("src.txt"), new File("target.txt"));
     }
 }
