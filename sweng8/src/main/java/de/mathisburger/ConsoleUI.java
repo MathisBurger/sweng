@@ -7,13 +7,8 @@ import java.io.File;
 
 public class ConsoleUI {
 
-    private final FileCopyIF fileCopy;
-
-    public ConsoleUI() {
-        this.fileCopy = ConfigurationManager.getFileCopy();
-    }
 
     public static void main(String[] args) {
-        fileCopy.copyFile(new File("src.txt"), new File("target.txt"));
+        ConfigurationManager.getFileCopy().copyFile(new File("src.txt"), new File("target.txt"));
     }
 }

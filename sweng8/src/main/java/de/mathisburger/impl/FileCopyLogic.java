@@ -19,27 +19,20 @@ public class FileCopyLogic implements FileCopyIF {
 
     @Override
     public void copyFile(File source, File target) {
-        logging.log( "Obtaining file locks" );
-
         try {
+            logging.log( "Obtaining file locks" );
             locking.lockFile( source );
-        } catch (IOException e) {
-            locking.unlock(source);
-            // hier dateien schließen
-        }
-        try {
-            locking.lockFile( source );
-        } catch (IOException e) {
-            locking.unlock(source);
-            // hier dateien schließen
-        }
+            locking.lockFile( target );
 
-        logging.log( "Starting file copy" );
-        // Do the file copy here
-        logging.log( "Files successfull copied" );
-
-        locking.unlock( source );
-        locking.unlock( target );
-        logging.log( "Copy job finished" );
+            logging.log( "Starting file copy" );
+            // Do the file copy here
+            logging.log( "Files successfull copied" );
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            locking.unlock( source );
+            locking.unlock( target );
+            logging.log( "Copy job finished" );
+        }
     }
 }
